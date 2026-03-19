@@ -1,0 +1,21 @@
+Suggestion Logic (The "AI Advisor")
+
+Instead of just a "Buy/Sell" signal, use an LLM (like Gemini API) to synthesize the data.
+
+
+
+Input: "RSI is 30 (oversold), News sentiment is Positive, Nifty IT is trending up."
+
+Output: "Strong Buy Suggestion: Technicals indicate a reversal while sentiment remains bullish due to recent earnings."
+
+4. Development Roadmap
+
+Phase 1: Data Pipeline: Write a service to fetch Nifty 50 or specific stock data  and store it in your database.
+
+Phase 2: Feature Engineering: Create a script to calculate technical indicators and labels (e.g., "1" if price goes up tomorrow, "0" if down).
+
+Phase 3: Model Training: Train a classifier (like Random Forest or XGBoost) on your historical features.
+
+Phase 4: Dashboard: Build the UI in Next.js. Use Lucide-react for icons and Recharts or Plotly for the stock graphs.
+
+Phase 5: Refinement: Implement "Air Writing" or interactive elements using your interest in Three.js to make the analysis feel futuristic.
