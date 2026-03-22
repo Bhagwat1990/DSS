@@ -4,11 +4,14 @@ import com.dss.client.GrowwApiClient;
 import com.dss.dto.groww.GrowwOrderRequest;
 import com.dss.dto.groww.GrowwOrderResponse;
 import com.dss.dto.groww.GrowwQuoteResponse;
+import com.dss.dto.groww.HistoricalCandleResponse;
+import com.dss.entity.QuoteHistory;
 import com.dss.service.GrowwService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -36,6 +39,19 @@ public class GrowwController {
     }
 
     /**
+     * GET /api/groww/ltp?segment=CASH&symbols=NSE_RELIANCE,BSE_SENSEX
+     *
+     * Fetch last traded price for one or more instruments.
+     */
+    @GetMapping("/ltp")
+    public ResponseEntity<String> getLtp(
+            @RequestParam(defaultValue = "CASH") String segment,
+            @RequestParam String symbols) {
+        String ltp = growwService.getLtp(segment, symbols);
+        return ResponseEntity.ok(ltp);
+    }
+
+    /**
      * POST /api/groww/order
      *
      * Place a buy or sell order.
@@ -44,18 +60,75 @@ public class GrowwController {
      * <pre>
      * {
      *   "exchange": "NSE",
-     *   "tradingSymbol": "RELIANCE",
-     *   "transactionType": "BUY",
-     *   "orderType": "LIMIT",
-     *   "productType": "CNC",
+     *   "trading_symbol": "RELIANCE",
+     *   "transaction_type": "BUY",
+     *   "order_type": "LIMIT",
+     *   "product": "CNC",
      *   "quantity": 10,
-     *   "price": 2450.50
+     *   "price": 2450.50,
+     *   "validity": "DAY",
+     *   "segment": "CASH",
+     *   "order_reference_id": "DSS12345678"
      * }
      * </pre>
      */
     @PostMapping("/order")
     public ResponseEntity<GrowwOrderResponse> placeOrder(@RequestBody GrowwOrderRequest request) {
         GrowwOrderResponse response = growwService.placeOrder(request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * POST /api/groww/quote/store?exchange=NSE
+     * Body: ["HDFC", "WIPRO", "TCS"]
+     *
+     * Fetch live quotes for each symbol and store them in the quote_history table.
+     */
+    @PostMapping("/quote/store")
+    public ResponseEntity<List<QuoteHistory>> fetchAndStoreQuotes(
+            @RequestParam(defaultValue = "NSE") String exchange,
+            @RequestBody List<String> symbols) {
+        List<QuoteHistory> stored = growwService.fetchAndStoreQuotes(exchange, symbols);
+        return ResponseEntity.ok(stored);
+    }
+
+    /**
+     * GET /api/groww/quote/history
+     *
+     * Retrieve all stored quote history records.
+     */
+    @GetMapping("/quote/history")
+    public ResponseEntity<List<QuoteHistory>> getQuoteHistory() {
+        return ResponseEntity.ok(growwService.getAllQuoteHistory());
+    }
+
+    /**
+     * DELETE /api/groww/quote/history?symbol=HDFC
+     *
+     * Delete quote history records for a specific symbol.
+     */
+    @DeleteMapping("/quote/history")
+    public ResponseEntity<Map<String, String>> deleteQuoteHistory(@RequestParam String symbol) {
+        growwService.deleteQuoteHistory(symbol);
+        return ResponseEntity.ok(Map.of("message", "Deleted quote history for " + symbol));
+    }
+
+    /**
+     * GET /api/groww/historical/candles?exchange=NSE&segment=CASH&growwSymbol=NSE-WIPRO
+     *     &startTime=2025-09-24 10:00:00&endTime=2025-09-24 15:30:00&candleInterval=5minute
+     *
+     * Fetch historical OHLCV candle data for backtesting.
+     */
+    @GetMapping("/historical/candles")
+    public ResponseEntity<HistoricalCandleResponse> getHistoricalCandles(
+            @RequestParam(defaultValue = "NSE") String exchange,
+            @RequestParam(defaultValue = "CASH") String segment,
+            @RequestParam String growwSymbol,
+            @RequestParam String startTime,
+            @RequestParam String endTime,
+            @RequestParam(defaultValue = "1day") String candleInterval) {
+        HistoricalCandleResponse response = growwService.getHistoricalCandles(
+                exchange, segment, growwSymbol, startTime, endTime, candleInterval);
         return ResponseEntity.ok(response);
     }
 

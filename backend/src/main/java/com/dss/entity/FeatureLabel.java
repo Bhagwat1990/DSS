@@ -26,4 +26,6 @@ public class FeatureLabel {
 
     // Target label: 1 = price up tomorrow, 0 = price down tomorrow
     private Integer label;
+    @Builder.Default
+    private Boolean isDeleted = false;
 }

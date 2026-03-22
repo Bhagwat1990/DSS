@@ -20,4 +20,6 @@ public class TechnicalIndicator {
     private Double bollingerLower;
     private Double bollingerMiddle;
     private Double atr;
+    @Builder.Default
+    private Boolean isDeleted = false;
 }

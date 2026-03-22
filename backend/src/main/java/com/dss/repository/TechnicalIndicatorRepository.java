@@ -34,41 +34,48 @@ public class TechnicalIndicatorRepository {
             .bollingerLower(getDoubleOrNull(rs, "bollinger_lower"))
             .bollingerMiddle(getDoubleOrNull(rs, "bollinger_middle"))
             .atr(getDoubleOrNull(rs, "atr"))
+            .isDeleted(getBooleanOrNull(rs, "is_deleted"))
             .build();
 
     public void save(TechnicalIndicator ti) {
         jdbcTemplate.update(
                 "INSERT INTO technical_indicators(symbol, ts, rsi, sma_short, sma_long, ema12, ema26, " +
-                "macd, macd_signal, macd_histogram, bollinger_upper, bollinger_lower, bollinger_middle, atr) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "macd, macd_signal, macd_histogram, bollinger_upper, bollinger_lower, bollinger_middle, atr, is_deleted) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 ti.getSymbol(), Timestamp.valueOf(ti.getDate().atStartOfDay()),
                 ti.getRsi(), ti.getSmaShort(), ti.getSmaLong(), ti.getEma12(), ti.getEma26(),
                 ti.getMacd(), ti.getMacdSignal(), ti.getMacdHistogram(),
-                ti.getBollingerUpper(), ti.getBollingerLower(), ti.getBollingerMiddle(), ti.getAtr());
+                ti.getBollingerUpper(), ti.getBollingerLower(), ti.getBollingerMiddle(), ti.getAtr(),
+                ti.getIsDeleted() != null && ti.getIsDeleted());
     }
 
     public List<TechnicalIndicator> findBySymbolOrderByDateAsc(String symbol) {
         return jdbcTemplate.query(
-                "SELECT * FROM technical_indicators WHERE symbol = ? ORDER BY ts ASC",
+                "SELECT * FROM technical_indicators WHERE symbol = ? AND (is_deleted != true OR is_deleted IS NULL) ORDER BY ts ASC",
                 ROW_MAPPER, symbol);
     }
 
     public Optional<TechnicalIndicator> findTopBySymbolOrderByDateDesc(String symbol) {
         List<TechnicalIndicator> results = jdbcTemplate.query(
-                "SELECT * FROM technical_indicators LATEST ON ts PARTITION BY symbol WHERE symbol = ?",
+                "SELECT * FROM technical_indicators WHERE symbol = ? AND (is_deleted != true OR is_deleted IS NULL) LATEST ON ts PARTITION BY symbol",
                 ROW_MAPPER, symbol);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
     public Optional<TechnicalIndicator> findBySymbolAndDate(String symbol, LocalDate date) {
         List<TechnicalIndicator> results = jdbcTemplate.query(
-                "SELECT * FROM technical_indicators WHERE symbol = ? AND ts = ? LIMIT 1",
+                "SELECT * FROM technical_indicators WHERE symbol = ? AND ts = ? AND (is_deleted != true OR is_deleted IS NULL) LIMIT 1",
                 ROW_MAPPER, symbol, Timestamp.valueOf(date.atStartOfDay()));
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
     private static Double getDoubleOrNull(ResultSet rs, String col) throws SQLException {
         double v = rs.getDouble(col);
+        return rs.wasNull() ? null : v;
+    }
+
+    private static Boolean getBooleanOrNull(ResultSet rs, String col) throws SQLException {
+        boolean v = rs.getBoolean(col);
         return rs.wasNull() ? null : v;
     }
 }

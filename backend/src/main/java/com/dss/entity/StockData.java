@@ -13,4 +13,6 @@ public class StockData {
     private Double low;
     private Double close;
     private Long volume;
+    @Builder.Default
+    private Boolean isDeleted = false;
 }

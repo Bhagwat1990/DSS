@@ -30,34 +30,41 @@ public class FeatureLabelRepository {
             .volumeChange(getDoubleOrNull(rs, "volume_change"))
             .atr(getDoubleOrNull(rs, "atr"))
             .label(rs.getInt("label"))
+            .isDeleted(getBooleanOrNull(rs, "is_deleted"))
             .build();
 
     public void save(FeatureLabel fl) {
         jdbcTemplate.update(
                 "INSERT INTO feature_labels(symbol, ts, rsi, sma_short_ratio, sma_long_ratio, macd, macd_signal, " +
-                "bollinger_position, price_change, volume_change, atr, label) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "bollinger_position, price_change, volume_change, atr, label, is_deleted) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 fl.getSymbol(), Timestamp.valueOf(fl.getDate().atStartOfDay()),
                 fl.getRsi(), fl.getSmaShortRatio(), fl.getSmaLongRatio(),
                 fl.getMacd(), fl.getMacdSignal(), fl.getBollingerPosition(),
-                fl.getPriceChange(), fl.getVolumeChange(), fl.getAtr(), fl.getLabel());
+                fl.getPriceChange(), fl.getVolumeChange(), fl.getAtr(), fl.getLabel(),
+                fl.getIsDeleted() != null && fl.getIsDeleted());
     }
 
     public List<FeatureLabel> findBySymbolOrderByDateAsc(String symbol) {
         return jdbcTemplate.query(
-                "SELECT * FROM feature_labels WHERE symbol = ? ORDER BY ts ASC",
+                "SELECT * FROM feature_labels WHERE symbol = ? AND (is_deleted != true OR is_deleted IS NULL) ORDER BY ts ASC",
                 ROW_MAPPER, symbol);
     }
 
     public long countBySymbol(String symbol) {
         Long count = jdbcTemplate.queryForObject(
-                "SELECT count() FROM feature_labels WHERE symbol = ?",
+                "SELECT count() FROM feature_labels WHERE symbol = ? AND (is_deleted != true OR is_deleted IS NULL)",
                 Long.class, symbol);
         return count != null ? count : 0;
     }
 
     private static Double getDoubleOrNull(ResultSet rs, String col) throws SQLException {
         double v = rs.getDouble(col);
+        return rs.wasNull() ? null : v;
+    }
+
+    private static Boolean getBooleanOrNull(ResultSet rs, String col) throws SQLException {
+        boolean v = rs.getBoolean(col);
         return rs.wasNull() ? null : v;
     }
 }

@@ -212,49 +212,64 @@ public class AiAdvisorService {
     }
 
     private String callGeminiApi(String inputSummary) {
-        try {
-            String prompt = String.format(
-                    "You are a professional stock market analyst AI. Analyze the following stock data and " +
-                    "provide a concise trading suggestion with reasoning. Be specific about the signals.\n\n" +
-                    "Data: %s\n\n" +
-                    "Provide your analysis in this format:\n" +
-                    "1. Signal (Strong Buy / Buy / Hold / Sell / Strong Sell)\n" +
-                    "2. Key technical observations (2-3 points)\n" +
-                    "3. Brief reasoning for the suggestion\n" +
-                    "Keep it under 150 words.", inputSummary);
+        String prompt = String.format(
+                "You are a professional stock market analyst AI. Analyze the following stock data and " +
+                "provide a concise trading suggestion with reasoning. Be specific about the signals.\n\n" +
+                "Data: %s\n\n" +
+                "Provide your analysis in this format:\n" +
+                "1. Signal (Strong Buy / Buy / Hold / Sell / Strong Sell)\n" +
+                "2. Key technical observations (2-3 points)\n" +
+                "3. Brief reasoning for the suggestion\n" +
+                "Keep it under 150 words.", inputSummary);
 
-            String requestBody = objectMapper.writeValueAsString(Map.of(
-                    "contents", List.of(Map.of(
-                            "parts", List.of(Map.of("text", prompt))
-                    ))
-            ));
+        int maxRetries = 3;
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                String requestBody = objectMapper.writeValueAsString(Map.of(
+                        "contents", List.of(Map.of(
+                                "parts", List.of(Map.of("text", prompt))
+                        ))
+                ));
 
-            String response = webClient.post()
-                    .uri(geminiApiUrl + "?key=" + geminiApiKey)
-                    .header("Content-Type", "application/json")
-                    .bodyValue(requestBody)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+                String response = webClient.post()
+                        .uri(geminiApiUrl + "?key=" + geminiApiKey)
+                        .header("Content-Type", "application/json")
+                        .bodyValue(requestBody)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
 
-            JsonNode root = objectMapper.readTree(response);
-            JsonNode candidates = root.get("candidates");
-            if (candidates != null && candidates.isArray() && !candidates.isEmpty()) {
-                JsonNode content = candidates.get(0).get("content");
-                if (content != null) {
-                    JsonNode parts = content.get("parts");
-                    if (parts != null && parts.isArray() && !parts.isEmpty()) {
-                        return parts.get(0).get("text").asText();
+                JsonNode root = objectMapper.readTree(response);
+                JsonNode candidates = root.get("candidates");
+                if (candidates != null && candidates.isArray() && !candidates.isEmpty()) {
+                    JsonNode content = candidates.get(0).get("content");
+                    if (content != null) {
+                        JsonNode parts = content.get("parts");
+                        if (parts != null && parts.isArray() && !parts.isEmpty()) {
+                            return parts.get(0).get("text").asText();
+                        }
                     }
                 }
+
+                log.warn("Unexpected Gemini API response structure: {}", response);
+                return "AI analysis unavailable. Raw response: " + response;
+
+            } catch (Exception e) {
+                String msg = e.getMessage();
+                boolean rateLimited = msg != null && (msg.contains("429") || msg.contains("Too Many Requests")
+                        || msg.contains("RESOURCE_EXHAUSTED"));
+                if (rateLimited && attempt < maxRetries) {
+                    log.warn("Gemini API rate limited (attempt {}/{}), retrying after {}s...", attempt, maxRetries, attempt * 5);
+                    try { Thread.sleep(attempt * 5000L); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+                    continue;
+                }
+                log.error("Error calling Gemini API (attempt {}/{})", attempt, maxRetries, e);
+                if (rateLimited) {
+                    return "AI analysis temporarily unavailable: API rate limit exceeded. Please try again in a minute.";
+                }
+                return "AI analysis temporarily unavailable: " + msg;
             }
-
-            log.warn("Unexpected Gemini API response structure: {}", response);
-            return "AI analysis unavailable. Raw response: " + response;
-
-        } catch (Exception e) {
-            log.error("Error calling Gemini API", e);
-            return "AI analysis temporarily unavailable: " + e.getMessage();
         }
+        return "AI analysis temporarily unavailable: max retries exceeded.";
     }
 }

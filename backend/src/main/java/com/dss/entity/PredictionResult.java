@@ -16,4 +16,6 @@ public class PredictionResult {
     private String signal;
     private String aiSuggestion;
     private String inputSummary;
+    @Builder.Default
+    private Boolean isDeleted = false;
 }

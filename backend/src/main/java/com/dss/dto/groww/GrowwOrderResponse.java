@@ -4,49 +4,41 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
+import java.util.Map;
+
 /**
- * Response from Groww after placing an order.
+ * Response from Groww Trading API after placing an order.
+ * <p>
+ * Endpoint: POST https://api.groww.in/v1/order/create
+ * Docs: https://groww.in/trade-api/docs/curl/orders
  */
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class GrowwOrderResponse {
 
-    @JsonProperty("orderId")
-    private String orderId;
-
     @JsonProperty("status")
-    private String status;             // "PLACED", "REJECTED", "PENDING"
+    private String status;               // "SUCCESS" or "FAILURE"
 
-    @JsonProperty("message")
-    private String message;
+    @JsonProperty("payload")
+    private OrderPayload payload;
 
-    @JsonProperty("exchange")
-    private String exchange;
+    @JsonProperty("error")
+    private Map<String, Object> error;   // present when status=FAILURE
 
-    @JsonProperty("tradingSymbol")
-    private String tradingSymbol;
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class OrderPayload {
 
-    @JsonProperty("transactionType")
-    private String transactionType;
+        @JsonProperty("groww_order_id")
+        private String growwOrderId;
 
-    @JsonProperty("orderType")
-    private String orderType;
+        @JsonProperty("order_status")
+        private String orderStatus;      // "OPEN", "REJECTED", etc.
 
-    @JsonProperty("quantity")
-    private Integer quantity;
+        @JsonProperty("order_reference_id")
+        private String orderReferenceId;
 
-    @JsonProperty("price")
-    private Double price;
-
-    @JsonProperty("averagePrice")
-    private Double averagePrice;
-
-    @JsonProperty("filledQuantity")
-    private Integer filledQuantity;
-
-    @JsonProperty("pendingQuantity")
-    private Integer pendingQuantity;
-
-    @JsonProperty("orderTimestamp")
-    private String orderTimestamp;
+        @JsonProperty("remark")
+        private String remark;
+    }
 }

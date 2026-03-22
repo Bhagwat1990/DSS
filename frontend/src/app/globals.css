@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0a0e1a;
+  --foreground: #e0e6f0;
+  --card: #111827;
+  --card-hover: #1a2338;
+  --border: #1e293b;
+  --accent: #00d4ff;
+  --accent-dim: #0097b2;
+  --green: #00ff88;
+  --red: #ff4466;
+  --yellow: #ffd700;
+  --purple: #a855f7;
+  --glow: 0 0 20px rgba(0, 212, 255, 0.15);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-hover: var(--card-hover);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-dim: var(--accent-dim);
+  --color-green: var(--green);
+  --color-red: var(--red);
+  --color-yellow: var(--yellow);
+  --color-purple: var(--purple);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1e293b transparent;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(0, 212, 255, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(0, 212, 255, 0.4); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+.glow-card {
+  box-shadow: var(--glow);
+  transition: box-shadow 0.3s ease;
+}
+.glow-card:hover {
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.25);
+}
+
+.signal-strong-buy { color: var(--green); text-shadow: 0 0 10px rgba(0, 255, 136, 0.5); }
+.signal-buy { color: #66ffaa; }
+.signal-hold { color: var(--yellow); }
+.signal-sell { color: #ff8899; }
+.signal-strong-sell { color: var(--red); text-shadow: 0 0 10px rgba(255, 68, 102, 0.5); }

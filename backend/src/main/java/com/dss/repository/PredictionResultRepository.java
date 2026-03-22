@@ -25,26 +25,28 @@ public class PredictionResultRepository {
             .signal(rs.getString("signal"))
             .aiSuggestion(rs.getString("ai_suggestion"))
             .inputSummary(rs.getString("input_summary"))
+            .isDeleted(getBooleanOrNull(rs, "is_deleted"))
             .build();
 
     public void save(PredictionResult pr) {
         jdbcTemplate.update(
                 "INSERT INTO prediction_results(symbol, prediction_time, ml_prediction, ml_confidence, " +
-                "signal, ai_suggestion, input_summary) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "signal, ai_suggestion, input_summary, is_deleted) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 pr.getSymbol(), Timestamp.valueOf(pr.getPredictionTime()),
                 pr.getMlPrediction(), pr.getMlConfidence(),
-                pr.getSignal(), pr.getAiSuggestion(), pr.getInputSummary());
+                pr.getSignal(), pr.getAiSuggestion(), pr.getInputSummary(),
+                pr.getIsDeleted() != null && pr.getIsDeleted());
     }
 
     public List<PredictionResult> findBySymbolOrderByPredictionTimeDesc(String symbol) {
         return jdbcTemplate.query(
-                "SELECT * FROM prediction_results WHERE symbol = ? ORDER BY prediction_time DESC",
+                "SELECT * FROM prediction_results WHERE symbol = ? AND (is_deleted != true OR is_deleted IS NULL) ORDER BY prediction_time DESC",
                 ROW_MAPPER, symbol);
     }
 
     public PredictionResult findTopBySymbolOrderByPredictionTimeDesc(String symbol) {
         List<PredictionResult> results = jdbcTemplate.query(
-                "SELECT * FROM prediction_results LATEST ON prediction_time PARTITION BY symbol WHERE symbol = ?",
+                "SELECT * FROM prediction_results WHERE symbol = ? AND (is_deleted != true OR is_deleted IS NULL) LATEST ON prediction_time PARTITION BY symbol",
                 ROW_MAPPER, symbol);
         return results.isEmpty() ? null : results.get(0);
     }
@@ -56,6 +58,11 @@ public class PredictionResultRepository {
 
     private static Integer getIntOrNull(ResultSet rs, String col) throws SQLException {
         int v = rs.getInt(col);
+        return rs.wasNull() ? null : v;
+    }
+
+    private static Boolean getBooleanOrNull(ResultSet rs, String col) throws SQLException {
+        boolean v = rs.getBoolean(col);
         return rs.wasNull() ? null : v;
     }
 }

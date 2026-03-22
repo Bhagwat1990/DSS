@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,32 +28,46 @@ public class StockDataRepository {
             .low(getDoubleOrNull(rs, "low"))
             .close(getDoubleOrNull(rs, "close"))
             .volume(getLongOrNull(rs, "volume"))
+            .isDeleted(getBooleanOrNull(rs, "is_deleted"))
             .build();
 
     public void save(StockData sd) {
         jdbcTemplate.update(
-                "INSERT INTO stock_data(symbol, ts, open, high, low, close, volume) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO stock_data(symbol, ts, open, high, low, close, volume, is_deleted) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 sd.getSymbol(),
                 Timestamp.valueOf(sd.getDate().atStartOfDay()),
-                sd.getOpen(), sd.getHigh(), sd.getLow(), sd.getClose(), sd.getVolume());
+                sd.getOpen(), sd.getHigh(), sd.getLow(), sd.getClose(), sd.getVolume(),
+                sd.getIsDeleted() != null && sd.getIsDeleted());
+    }
+
+    /**
+     * Save with millisecond-precision timestamp for live data feeds.
+     */
+    public void saveLive(StockData sd, LocalDateTime timestamp) {
+        jdbcTemplate.update(
+                "INSERT INTO stock_data(symbol, ts, open, high, low, close, volume, is_deleted) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                sd.getSymbol(),
+                Timestamp.valueOf(timestamp),
+                sd.getOpen(), sd.getHigh(), sd.getLow(), sd.getClose(), sd.getVolume(),
+                sd.getIsDeleted() != null && sd.getIsDeleted());
     }
 
     public List<StockData> findBySymbolOrderByDateAsc(String symbol) {
         return jdbcTemplate.query(
-                "SELECT * FROM stock_data WHERE symbol = ? ORDER BY ts ASC",
+                "SELECT * FROM stock_data WHERE symbol = ? AND (is_deleted != true OR is_deleted IS NULL) ORDER BY ts ASC",
                 ROW_MAPPER, symbol);
     }
 
     public Optional<StockData> findBySymbolAndDate(String symbol, LocalDate date) {
         List<StockData> results = jdbcTemplate.query(
-                "SELECT * FROM stock_data WHERE symbol = ? AND ts = ? LIMIT 1",
+                "SELECT * FROM stock_data WHERE symbol = ? AND ts = ? AND (is_deleted != true OR is_deleted IS NULL) LIMIT 1",
                 ROW_MAPPER, symbol, Timestamp.valueOf(date.atStartOfDay()));
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
     public Optional<StockData> findTopBySymbolOrderByDateDesc(String symbol) {
         List<StockData> results = jdbcTemplate.query(
-                "SELECT * FROM stock_data LATEST ON ts PARTITION BY symbol WHERE symbol = ?",
+                "SELECT * FROM stock_data WHERE symbol = ? AND (is_deleted != true OR is_deleted IS NULL) LATEST ON ts PARTITION BY symbol",
                 ROW_MAPPER, symbol);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
@@ -64,6 +79,11 @@ public class StockDataRepository {
 
     private static Long getLongOrNull(ResultSet rs, String col) throws SQLException {
         long v = rs.getLong(col);
+        return rs.wasNull() ? null : v;
+    }
+
+    private static Boolean getBooleanOrNull(ResultSet rs, String col) throws SQLException {
+        boolean v = rs.getBoolean(col);
         return rs.wasNull() ? null : v;
     }
 }
